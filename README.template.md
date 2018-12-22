@@ -198,4 +198,4 @@ Description of something that can be executed; an object with [filter](#schema-f
 
 Most options from `nodemon`'s config file `nodemon.json` are supported. Exceptions will be documented here.
 
-To convert a nodemon.json to a canonical watchfs YAML config, you can use `watchfs -c -print-config`.
+To convert a nodemon.json to a canonical watchfs YAML config, you can use `watchfs -c path/to/nodemon.json -print-config`.
