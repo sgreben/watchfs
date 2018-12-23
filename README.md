@@ -213,7 +213,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 
 - `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
-- `signal`: [signal](#schema-signal) list
+- `signal`: [signal](#schema-signal)
 
 ##### `exec` fields
 
