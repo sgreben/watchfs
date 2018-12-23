@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -146,7 +147,9 @@ func (a *ActionHTTPGet) Run(ctx context.Context) error {
 
 // ActionExec runs the given command
 type ActionExec struct {
-	Command       []string          `json:"command,omitempty" yaml:"command,flow,omitempty"`
+	Command []string    `json:"command,omitempty" yaml:"command,flow,omitempty"`
+	Shell   interface{} `json:"shell,omitempty" yaml:"shell,flow,omitempty"`
+
 	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
 
@@ -177,6 +180,59 @@ func (a *ActionExec) Run(ctx context.Context) error {
 	if len(a.Command) == 0 {
 		return nil
 	}
+	var shell interface{}
+	switch {
+	case a.Shell != nil:
+		shell = a.Shell
+	case config.Shell != nil:
+		shell = config.Shell
+	}
+
+	switch {
+	case shell == false, shell == nil, shell == "":
+		return a.runRaw(ctx)
+	case shell == true:
+		return a.runShell(ctx, defaultShell, defaultShellArgs)
+	}
+
+	switch v := shell.(type) {
+	case string:
+		return a.runShell(ctx, v, defaultShellArgs)
+	case []string:
+		if len(v) == 0 {
+			return a.runShell(ctx, defaultShell, defaultShellArgs)
+		}
+		name := v[0]
+		var args []string
+		if len(v) > 0 {
+			args = v[1:]
+		}
+		return a.runShell(ctx, name, args)
+	default:
+		return a.runShell(ctx, defaultShell, defaultShellArgs)
+	}
+}
+
+func (a *ActionExec) runShell(ctx context.Context, name string, args []string) error {
+	args = append([]string(nil), args...)
+	script := strings.Join(a.Command, defaultShellCommandSeparator)
+	args = append(args, script)
+	a.command = exec.CommandContext(ctx, name, args...)
+	a.command.Stdout = os.Stdout
+	a.command.Stderr = os.Stderr
+	if len(a.Env) > 0 || len(config.Env) > 0 {
+		a.command.Env = append(a.command.Env, os.Environ()...)
+		for k, v := range config.Env {
+			a.command.Env = append(a.command.Env, fmt.Sprintf("%s=%s", k, v))
+		}
+		for k, v := range a.Env {
+			a.command.Env = append(a.command.Env, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+	return a.command.Run()
+}
+
+func (a *ActionExec) runRaw(ctx context.Context) error {
 	name := a.Command[0]
 	var args []string
 	if len(a.Command) > 1 {

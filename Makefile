@@ -1,4 +1,4 @@
-VERSION = 0.10.0
+VERSION = 0.11.0
 
 APP      := watchfs
 PACKAGES := $(shell go list -f {{.Dir}} ./...)
