@@ -238,6 +238,16 @@ func flagsToConfiguration() {
 	}
 	if flag.NArg() > 0 {
 		switch action.Value {
+		case actionShell:
+			var shellCommand []string
+			for _, a := range flag.Args() {
+				shellCommand = append(shellCommand, fmt.Sprintf("%q", a))
+			}
+			config.Actions = append(config.Actions, Action{
+				ActionShell: &ActionShell{
+					Command: strings.Join(shellCommand, " "),
+				},
+			})
 		case actionExec:
 			config.Actions = append(config.Actions, Action{
 				ActionExec: &ActionExec{
