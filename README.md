@@ -187,7 +187,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `command`: string list
 - `env`: key/value map
 - `workdir`: string
-- `volumes`: [volume](#volume) list
+- `volumes`: [volume](#volume-fields) list
 - `extraArgs`: string list
 - `ignoreSignals`: boolean
 
