@@ -25,15 +25,22 @@ var actions = []string{
 	actionDockerRun,
 }
 
+var actionLocks = func() *Locks {
+	var l Locks
+	l.Init()
+	return &l
+}()
+
 // Action is an operation triggered in response to an fsnotify event
 type Action struct {
 	*ActionHTTPGet   `json:"httpGet,omitempty" yaml:"httpGet,omitempty"`
 	*ActionExec      `json:"exec,omitempty" yaml:"exec,omitempty"`
 	*ActionDockerRun `json:"dockerRun,omitempty" yaml:"dockerRun,omitempty"`
 	Filter           `yaml:",inline,omitempty"`
-	Ignore           *Filter `json:"ignore,omitempty" yaml:"ignore,omitempty"`
-	Delay            string  `json:"delay,omitempty" yaml:"delay,omitempty"`
-	Signal           string  `json:"signal,omitempty" yaml:"signal,omitempty"`
+	Ignore           *Filter  `json:"ignore,omitempty" yaml:"ignore,omitempty"`
+	Delay            string   `json:"delay,omitempty" yaml:"delay,omitempty"`
+	Signal           string   `json:"signal,omitempty" yaml:"signal,omitempty"`
+	Locks            []string `json:"locks,omitempty" yaml:"locks,flow,omitempty"`
 
 	trigger chan Event
 	delay   time.Duration
@@ -94,6 +101,8 @@ func (a *Action) Notify(e Event) error {
 
 // Run runs the action
 func (a *Action) Run(ctx context.Context) error {
+	actionLocks.Lock(a.Locks)
+	defer actionLocks.Unlock(a.Locks)
 	switch {
 	case a.ActionHTTPGet != nil:
 		return a.ActionHTTPGet.Run(ctx)

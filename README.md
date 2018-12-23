@@ -37,14 +37,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.10.0/watchfs_0.10.0_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.10.0/watchfs_0.10.0_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_windows_x86_64.zip
-unzip watchfs_0.9.1_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/0.10.0/watchfs_0.10.0_windows_x86_64.zip
+unzip watchfs_0.10.0_windows_x86_64.zip
 ```
 
 ## Usage
@@ -214,6 +214,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
 - `signal`: [signal](#schema-signal)
+- `locks`: [lock name](#locks) string list
 
 ##### `exec` fields
 
@@ -241,6 +242,12 @@ Description of something that can be executed; an object with [filter](#schema-f
 ##### `httpGet` fields
 
 - `url`: URL string
+
+##### Locks
+
+Locking allows you to prevent concurrent execution of actions.
+
+Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks listed for an action are acquired before the action is run, and released after the action completes.
 
 ### `nodemon.json` config
 

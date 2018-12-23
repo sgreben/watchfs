@@ -167,6 +167,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
 - `signal`: [signal](#schema-signal)
+- `locks`: [lock name](#locks) string list
 
 ##### `exec` fields
 
@@ -194,6 +195,12 @@ Description of something that can be executed; an object with [filter](#schema-f
 ##### `httpGet` fields
 
 - `url`: URL string
+
+##### Locks
+
+Locking allows you to prevent concurrent execution of actions.
+
+Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks listed for an action are acquired before the action is run, and released after the action completes.
 
 ### `nodemon.json` config
 
