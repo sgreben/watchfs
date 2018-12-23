@@ -3,7 +3,6 @@
 package main
 
 var (
-	defaultShell                 = "sh"
-	defaultShellArgs             = []string{"-eucv"}
-	defaultShellCommandSeparator = ";\n"
+	defaultShell     = "sh"
+	defaultShellArgs = []string{"-eucv"}
 )

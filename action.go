@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
@@ -17,12 +16,14 @@ import (
 const (
 	actionHTTPGet   = "httpGet"
 	actionExec      = "exec"
+	actionShell     = "shell"
 	actionDockerRun = "dockerRun"
 )
 
 var actions = []string{
 	actionHTTPGet,
 	actionExec,
+	actionShell,
 	actionDockerRun,
 }
 
@@ -36,6 +37,7 @@ var actionLocks = func() *Locks {
 type Action struct {
 	*ActionHTTPGet   `json:"httpGet,omitempty" yaml:"httpGet,omitempty"`
 	*ActionExec      `json:"exec,omitempty" yaml:"exec,omitempty"`
+	*ActionShell     `json:"shell,omitempty" yaml:"shell,omitempty"`
 	*ActionDockerRun `json:"dockerRun,omitempty" yaml:"dockerRun,omitempty"`
 	Filter           `yaml:",inline,omitempty"`
 	Ignore           *Filter  `json:"ignore,omitempty" yaml:"ignore,omitempty"`
@@ -68,6 +70,8 @@ func (a *Action) makeCanonical() {
 		switch {
 		case a.ActionExec != nil:
 			a.ActionExec.signal = &s
+		case a.ActionShell != nil:
+			a.ActionShell.signal = &s
 		case a.ActionDockerRun != nil:
 			a.ActionDockerRun.signal = &s
 		}
@@ -94,6 +98,8 @@ func (a *Action) Notify(e Event) error {
 		return a.ActionHTTPGet.Notify(e)
 	case a.ActionExec != nil:
 		return a.ActionExec.Notify(e)
+	case a.ActionShell != nil:
+		return a.ActionShell.Notify(e)
 	case a.ActionDockerRun != nil:
 		return a.ActionDockerRun.Notify(e)
 	}
@@ -109,6 +115,8 @@ func (a *Action) Run(ctx context.Context) error {
 		return a.ActionHTTPGet.Run(ctx)
 	case a.ActionExec != nil:
 		return a.ActionExec.Run(ctx)
+	case a.ActionShell != nil:
+		return a.ActionShell.Run(ctx)
 	case a.ActionDockerRun != nil:
 		return a.ActionDockerRun.Run(ctx)
 	}
@@ -147,9 +155,7 @@ func (a *ActionHTTPGet) Run(ctx context.Context) error {
 
 // ActionExec runs the given command
 type ActionExec struct {
-	Command []string    `json:"command,omitempty" yaml:"command,flow,omitempty"`
-	Shell   interface{} `json:"shell,omitempty" yaml:"shell,flow,omitempty"`
-
+	Command       []string          `json:"command,omitempty" yaml:"command,flow,omitempty"`
 	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
 
@@ -180,43 +186,11 @@ func (a *ActionExec) Run(ctx context.Context) error {
 	if len(a.Command) == 0 {
 		return nil
 	}
-	var shell interface{}
-	switch {
-	case a.Shell != nil:
-		shell = a.Shell
-	case config.Shell != nil:
-		shell = config.Shell
+	name := a.Command[0]
+	var args []string
+	if len(a.Command) > 1 {
+		args = a.Command[1:]
 	}
-
-	switch {
-	case shell == false, shell == nil, shell == "":
-		return a.runRaw(ctx)
-	case shell == true:
-		return a.runShell(ctx, defaultShell, defaultShellArgs)
-	}
-
-	switch v := shell.(type) {
-	case string:
-		return a.runShell(ctx, v, defaultShellArgs)
-	case []string:
-		if len(v) == 0 {
-			return a.runShell(ctx, defaultShell, defaultShellArgs)
-		}
-		name := v[0]
-		var args []string
-		if len(v) > 0 {
-			args = v[1:]
-		}
-		return a.runShell(ctx, name, args)
-	default:
-		return a.runShell(ctx, defaultShell, defaultShellArgs)
-	}
-}
-
-func (a *ActionExec) runShell(ctx context.Context, name string, args []string) error {
-	args = append([]string(nil), args...)
-	script := strings.Join(a.Command, defaultShellCommandSeparator)
-	args = append(args, script)
 	a.command = exec.CommandContext(ctx, name, args...)
 	a.command.Stdout = os.Stdout
 	a.command.Stderr = os.Stderr
@@ -232,12 +206,49 @@ func (a *ActionExec) runShell(ctx context.Context, name string, args []string) e
 	return a.command.Run()
 }
 
-func (a *ActionExec) runRaw(ctx context.Context) error {
-	name := a.Command[0]
-	var args []string
-	if len(a.Command) > 1 {
-		args = a.Command[1:]
+// ActionShell runs the given command
+type ActionShell struct {
+	Command       string            `json:"command,omitempty" yaml:"command,flow,omitempty"`
+	Shell         []string          `json:"shell,omitempty" yaml:"shell,flow,omitempty"`
+	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
+
+	signal  *os.Signal
+	command *exec.Cmd
+}
+
+// Notify notifies the action about a filesystem event
+func (a *ActionShell) Notify(e Event) error {
+	if a.IgnoreSignals {
+		return nil
 	}
+	if a.command == nil {
+		return nil
+	}
+	if a.command.Process == nil {
+		return nil
+	}
+	s := config.signal
+	if a.signal != nil {
+		s = *a.signal
+	}
+	return a.command.Process.Signal(s)
+}
+
+// Run runs the action
+func (a *ActionShell) Run(ctx context.Context) error {
+	if len(a.Command) == 0 {
+		return nil
+	}
+	name := defaultShell
+	args := append([]string(nil), defaultShellArgs...)
+	if len(a.Shell) > 0 {
+		name = a.Shell[0]
+		if len(a.Shell) > 1 {
+			args = a.Shell[1:]
+		}
+	}
+	args = append(args, a.Command)
 	a.command = exec.CommandContext(ctx, name, args...)
 	a.command.Stdout = os.Stdout
 	a.command.Stderr = os.Stderr

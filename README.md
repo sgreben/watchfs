@@ -18,7 +18,6 @@ Probably the best overview is given by
   - [YAML config](#yaml-config)
     - [Schema: Configuration](#schema-configuration)
     - [Schema: Action](#schema-action)
-    - [Schema: Shell](#schema-shell)
     - [Schema: Filter](#schema-filter)
     - [Schema: Signal](#schema-signal)
     - [Schema: Op](#schema-op)
@@ -38,14 +37,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/0.11.0/watchfs_0.11.0_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.12.0/watchfs_0.12.0_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/0.11.0/watchfs_0.11.0_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.12.0/watchfs_0.12.0_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/0.11.0/watchfs_0.11.0_windows_x86_64.zip
-unzip watchfs_0.11.0_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/0.12.0/watchfs_0.12.0_windows_x86_64.zip
+unzip watchfs_0.12.0_windows_x86_64.zip
 ```
 
 ## Usage
@@ -61,7 +60,7 @@ Usage of watchfs:
   -a value
     	(alias for -action) (default exec)
   -action value
-    	set the action type for the default action (choices [httpGet exec dockerRun]) (default exec)
+    	set the action type for the default action (choices [httpGet exec shell dockerRun]) (default exec)
   -c string
     	(alias for -config)
   -config string
@@ -145,7 +144,7 @@ An object with the keys:
 - `ignores`: [filter](#schema-filter) list
 - `env`: key/value map
 - `delay`: duration string
-- `shell`: [shell](#schema-shell) boolean or string or (string list)
+- `shell`: string list
 
 #### Schema: Action
 
@@ -154,6 +153,8 @@ Description of something that can be executed; an object with [filter](#schema-f
 - ([filter](#schema-filter) fields)
 - `exec`: object
   - ([exec fields](#exec-fields))
+- `shell`: object
+  - ([shell fields](#shell-fields))
 - `dockerRun`: object
   - ([dockerRun fields](#dockerrun-fields))
 - `httpGet`: object
@@ -169,7 +170,13 @@ Description of something that can be executed; an object with [filter](#schema-f
 ##### `exec` fields
 
 - `command`: string list
-- `shell`: [shell](#schema-shell) boolean or string or (string list)
+- `env`: key/value map
+- `ignoreSignals`: boolean
+
+##### `shell` fields
+
+- `command`: string
+- `shell`: string list
 - `env`: key/value map
 - `ignoreSignals`: boolean
 
@@ -199,18 +206,6 @@ Description of something that can be executed; an object with [filter](#schema-f
 Locking allows you to prevent concurrent execution of actions.
 
 Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks listed for an action are acquired before the action is run, and released after the action completes.
-
-
-#### Schema: Shell
-
-Determines whether a shell is used to execute `exec` actions; and if so, which shell to use.
-
-It can be either a boolean...
-
-- `true`: use the default shell (`cmd` for windows, `sh` otherwise)
-- `false`: do not use a shell
-
-or a string (e.g. `/bin/zsh`) indicating the shell binary to use, or a string list (e.g. `[zsh, -ceux]`) indicating the shell as well as its argument prefix.
 
 #### Schema: Filter
 
