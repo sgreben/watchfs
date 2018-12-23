@@ -17,11 +17,11 @@ Probably the best overview is given by
   - [CLI](#cli)
   - [YAML config](#yaml-config)
     - [Schema: Configuration](#schema-configuration)
+    - [Schema: Action](#schema-action)
     - [Schema: Shell](#schema-shell)
     - [Schema: Filter](#schema-filter)
     - [Schema: Signal](#schema-signal)
     - [Schema: Op](#schema-op)
-    - [Schema: Action](#schema-action)
   - [`nodemon.json` config](#nodemonjson-config)
 
 ## Get it
@@ -137,6 +137,7 @@ The `watchfs.yaml` file is expected to consist of one top-level [configuration o
 
 An object with the keys:
 
+- `actions`: [action](#schema-action) list
 - `paths`: (path or glob) list
 - `exts`: filename extension list
 - `ops`: [op](#schema-op) list
@@ -145,7 +146,60 @@ An object with the keys:
 - `env`: key/value map
 - `delay`: duration string
 - `shell`: [shell](#schema-shell) boolean or string or (string list)
-- `actions`: [action](#schema-action) list
+
+#### Schema: Action
+
+Description of something that can be executed; an object with [filter](#schema-filter) fields, [common fields](#common-fields) and one of the action-specific sets of fields:
+- ([common fields](#common-fields))
+- ([filter](#schema-filter) fields)
+- `exec`: object
+  - ([exec fields](#exec-fields))
+- `dockerRun`: object
+  - ([dockerRun fields](#dockerrun-fields))
+- `httpGet`: object
+  - ([httpGet fields](#httpget-fields))
+
+##### common fields
+
+- `delay`: duration string
+- `ignore`: [filter](#schema-filter) list
+- `signal`: [signal](#schema-signal)
+- `locks`: [lock name](#locks) string list
+
+##### `exec` fields
+
+- `command`: string list
+- `shell`: [shell](#schema-shell) boolean or string or (string list)
+- `env`: key/value map
+- `ignoreSignals`: boolean
+
+##### `dockerRun` fields
+
+- `image`: string
+- `entrypoint`: string
+- `command`: string list
+- `env`: key/value map
+- `workdir`: string
+- `volumes`: [volume](#volume) list
+- `extraArgs`: string list
+- `ignoreSignals`: boolean
+
+###### `volume` fields
+
+- `source`: volume name or path
+- `target`: path
+- `type`: docker volume type string
+
+##### `httpGet` fields
+
+- `url`: URL string
+
+##### Locks
+
+Locking allows you to prevent concurrent execution of actions.
+
+Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks listed for an action are acquired before the action is run, and released after the action completes.
+
 
 #### Schema: Shell
 
@@ -209,59 +263,6 @@ A filesystem operation; one of the strings:
 - `remove`
 - `rename`
 - `write`
-
-#### Schema: Action
-
-Description of something that can be executed; an object with [filter](#schema-filter) fields, [common fields](#common-fields) and one of the action-specific sets of fields:
-- ([common fields](#common-fields))
-- ([filter](#schema-filter) fields)
-- `exec`: object
-  - ([exec fields](#exec-fields))
-- `dockerRun`: object
-  - ([dockerRun fields](#dockerrun-fields))
-- `httpGet`: object
-  - ([httpGet fields](#httpget-fields))
-
-##### common fields
-
-- `delay`: duration string
-- `ignore`: [filter](#schema-filter) list
-- `signal`: [signal](#schema-signal)
-- `locks`: [lock name](#locks) string list
-
-##### `exec` fields
-
-- `command`: string list
-- `shell`: [shell](#schema-shell) boolean, string, or string list
-- `env`: key/value map
-- `ignoreSignals`: boolean
-
-##### `dockerRun` fields
-
-- `image`: string
-- `entrypoint`: string
-- `command`: string list
-- `env`: key/value map
-- `workdir`: string
-- `volumes`: [volume](#volume) list
-- `extraArgs`: string list
-- `ignoreSignals`: boolean
-
-###### `volume` fields
-
-- `source`: volume name or path
-- `target`: path
-- `type`: docker volume type string
-
-##### `httpGet` fields
-
-- `url`: URL string
-
-##### Locks
-
-Locking allows you to prevent concurrent execution of actions.
-
-Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks listed for an action are acquired before the action is run, and released after the action completes.
 
 ### `nodemon.json` config
 
