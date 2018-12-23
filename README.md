@@ -37,14 +37,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/0.9.0/watchfs_0.9.0_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/0.9.0/watchfs_0.9.0_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/0.9.0/watchfs_0.9.0_windows_x86_64.zip
-unzip watchfs_0.9.0_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/0.9.1/watchfs_0.9.1_windows_x86_64.zip
+unzip watchfs_0.9.1_windows_x86_64.zip
 ```
 
 ## Usage
@@ -136,22 +136,22 @@ The `watchfs.yaml` file is expected to consist of one top-level [configuration o
 
 An object with the keys:
 
+- `paths`: (path or glob) list
 - `exts`: filename extension list
 - `ops`: [op](#schema-op) list
-- `paths`: (path or glob) list
 - `signal`: [signal](#schema-signal) string
 - `ignores`: [filter](#schema-filter) list
 - `env`: key/value map
-- `delay`: duration
+- `delay`: duration string
 - `actions`: [action](#schema-action) list
 
 #### Schema: Filter
 
 A predicate over filesystem events; an object with the keys:
 
+- `paths`: (path or glob) list
 - `exts`: filename extension list
 - `ops`: [op](#schema-op) list
-- `paths`: (path or glob) list
 
 #### Schema: Signal
 
@@ -202,17 +202,18 @@ A filesystem operation; one of the strings:
 Description of something that can be executed; an object with [filter](#schema-filter) fields, [common fields](#common-fields) and one of the action-specific sets of fields:
 - ([common fields](#common-fields))
 - ([filter](#schema-filter) fields)
-- `exec`
+- `exec`: object
   - ([exec fields](#exec-fields))
-- `dockerRun`
+- `dockerRun`: object
   - ([dockerRun fields](#dockerrun-fields))
-- `httpGet`
+- `httpGet`: object
   - ([httpGet fields](#httpget-fields))
 
 ##### common fields
 
-- `delay`: duration
+- `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
+- `signal`: [signal](#schema-signal) list
 
 ##### `exec` fields
 

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -32,6 +33,7 @@ type Action struct {
 	Filter           `yaml:",inline,omitempty"`
 	Ignore           *Filter `json:"ignore,omitempty" yaml:"ignore,omitempty"`
 	Delay            string  `json:"delay,omitempty" yaml:"delay,omitempty"`
+	Signal           string  `json:"signal,omitempty" yaml:"signal,omitempty"`
 
 	trigger chan Event
 	delay   time.Duration
@@ -49,6 +51,18 @@ func (a *Action) makeCanonical() {
 	a.delay, _ = time.ParseDuration(a.Delay)
 	if a.delay > 0 {
 		a.tick = time.Tick(a.delay)
+	}
+	if a.Signal != "" {
+		s, ok := parseSignal[a.Signal]
+		if !ok {
+			s = syscall.SIGHUP
+		}
+		switch {
+		case a.ActionExec != nil:
+			a.ActionExec.signal = &s
+		case a.ActionDockerRun != nil:
+			a.ActionDockerRun.signal = &s
+		}
 	}
 }
 
@@ -127,6 +141,7 @@ type ActionExec struct {
 	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
 
+	signal  *os.Signal
 	command *exec.Cmd
 }
 
@@ -141,7 +156,11 @@ func (a *ActionExec) Notify(e Event) error {
 	if a.command.Process == nil {
 		return nil
 	}
-	return a.command.Process.Signal(config.signal)
+	s := config.signal
+	if a.signal != nil {
+		s = *a.signal
+	}
+	return a.command.Process.Signal(s)
 }
 
 // Run runs the action
@@ -184,6 +203,7 @@ type ActionDockerRun struct {
 	} `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 	IgnoreSignals bool `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
 
+	signal  *os.Signal
 	command *exec.Cmd
 }
 
@@ -198,7 +218,11 @@ func (a *ActionDockerRun) Notify(e Event) error {
 	if a.command.Process == nil {
 		return nil
 	}
-	return a.command.Process.Signal(config.signal)
+	s := config.signal
+	if a.signal != nil {
+		s = *a.signal
+	}
+	return a.command.Process.Signal(s)
 }
 
 // Run runs the action
