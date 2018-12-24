@@ -15,7 +15,6 @@ var parseSignal = map[string]os.Signal{
 	"SIGFPE":  syscall.SIGFPE,
 	"SIGHUP":  syscall.SIGHUP,
 	"SIGILL":  syscall.SIGILL,
-	"SIGINT":  syscall.SIGINT,
 	"SIGKILL": syscall.SIGKILL,
 	"SIGPIPE": syscall.SIGPIPE,
 	"SIGQUIT": syscall.SIGQUIT,

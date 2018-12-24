@@ -108,12 +108,15 @@ func main() {
 		}
 		return
 	}
-	if config.Paths == nil || len(config.Paths) == 0 {
+	noPaths := config.Paths == nil || len(config.Paths) == 0
+	noWatch := config.Watch == nil || len(config.Watch) == 0
+	if noPaths && noWatch {
 		stderrJSONEncode(struct {
 			Warning string `json:"warning"`
 		}{
-			Warning: "no paths to watch specified. to watch the current directory, use `watchfs -watch .`",
+			Warning: "no paths to watch specified. watching the current directory.",
 		})
+		config.Paths = append(config.Paths, ".")
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -122,51 +125,54 @@ func main() {
 	}
 	defer w.Close()
 
-	if config.Paths != nil {
-		for _, path := range config.Paths {
-			watchRecursive(w, path)
-		}
+	for _, path := range config.Paths {
+		watchRecursive(w, path)
 	}
 	for i := range config.Actions {
 		action := &config.Actions[i]
 		action.trigger = make(chan Event, 1)
 		run := make(chan struct{}, 1)
 		run <- struct{}{}
+		blockingWaitForTick := func() {
+			if action.tick != nil {
+			inner:
+				for {
+					select {
+					case <-action.tick:
+						break inner
+					case <-action.trigger:
+					}
+				}
+			}
+		}
 		go func() {
 			for range run {
 				if err := action.Run(ctx); err != nil {
 					onError(struct {
-						Action  *Action `json:"action"`
 						Message string  `json:"message"`
+						Action  *Action `json:"action"`
 					}{
-						Action:  action,
 						Message: err.Error(),
+						Action:  action,
 					})
 				}
 			}
 		}()
 		go func() {
 			for e := range action.trigger {
-				if action.tick != nil {
-				outer:
-					for {
-						select {
-						case <-action.tick:
-							break outer
-						case <-action.trigger:
-						}
-					}
+				if ok, _ := action.Notify(e); !ok {
+					run <- struct{}{}
 				}
-				select {
-				case run <- struct{}{}:
-				default:
-					action.Notify(e)
-				}
+				blockingWaitForTick()
 			}
 		}()
 	}
 	go func() {
 		for e := range w.Events {
+			info, err := os.Stat(e.Name)
+			if err == nil && info.IsDir() {
+				w.Add(e.Name)
+			}
 			onEvent(Event{
 				Name: e.Name,
 				Op:   e.Op,
@@ -229,9 +235,7 @@ func flagsToConfiguration() {
 		})
 	}
 	if len(ignore.Value) > 0 {
-		config.Ignore = append(config.Ignore, Filter{
-			Watch: ignore.Values(),
-		})
+		config.IgnoreWatch = append(config.IgnoreWatch, ignore.Values()...)
 	}
 	if len(signal.Value) > 0 {
 		config.Signal = signal.Value
@@ -365,6 +369,11 @@ func onEvent(e Event) {
 }
 
 func shouldExclude(path string, info os.FileInfo) bool {
+	for _, f := range config.IgnoreWatch {
+		if ok, err := filepath.Match(f, path); err == nil && ok {
+			return true
+		}
+	}
 	for _, f := range config.Ignore {
 		if _, any := f.Match(Event{Name: path}); any {
 			return true
@@ -374,12 +383,9 @@ func shouldExclude(path string, info os.FileInfo) bool {
 }
 
 func watchRecursive(w *fsnotify.Watcher, path string) {
-	path, err := filepath.Abs(path)
+	_, err := os.Stat(path)
 	if err != nil {
-		return
-	}
-	_, err = os.Stat(path)
-	if err != nil {
+		onError(err)
 		return
 	}
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -402,15 +408,15 @@ func watchRecursive(w *fsnotify.Watcher, path string) {
 			default:
 				onError(err)
 			}
-			return err
+			return filepath.SkipDir
 		}
 		if shouldExclude(path, info) {
-			return nil
+			return filepath.SkipDir
 		}
 		if info.IsDir() {
 			err := w.Add(path)
 			if err != nil {
-				onError(err)
+				return filepath.SkipDir
 			}
 		}
 		return nil

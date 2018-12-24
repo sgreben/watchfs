@@ -14,10 +14,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const defaultSignal = syscall.SIGKILL
+
 type configuration struct {
 	// User-facing representation
+	Paths       []string `json:"paths,omitempty" yaml:"paths,omitempty"`
+	Watch       []string `json:"watch,omitempty" yaml:"watch,omitempty"`
 	Filter      `yaml:",inline,omitempty"`
-	IgnorePaths []string          `json:"ignore,omitempty" yaml:"ignore,omitempty"`
+	IgnoreWatch []string          `json:"ignore,omitempty" yaml:"ignore,omitempty"`
 	Ignore      []Filter          `json:"ignores,omitempty" yaml:"ignores,omitempty"`
 	Env         map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	ExecMap     map[string]string `json:"execMap,omitempty" yaml:"execMap,omitempty"`
@@ -38,7 +42,7 @@ func (c *configuration) makeCanonical() {
 	}
 	s, ok := parseSignal[c.Signal]
 	if !ok {
-		s = syscall.SIGHUP
+		s = defaultSignal
 	}
 	c.signal = s
 	for ext, command := range c.ExecMap {
@@ -65,12 +69,6 @@ func (c *configuration) makeCanonical() {
 			c.Actions[i].Delay = c.Delay
 		}
 		c.Actions[i].makeCanonical()
-	}
-	if len(c.IgnorePaths) > 0 {
-		c.Ignore = append(c.Ignore, Filter{
-			Paths: c.IgnorePaths,
-		})
-		c.IgnorePaths = nil
 	}
 }
 

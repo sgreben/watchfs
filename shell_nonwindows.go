@@ -4,5 +4,5 @@ package main
 
 var (
 	defaultShell     = "sh"
-	defaultShellArgs = []string{"-eucv"}
+	defaultShellArgs = []string{"-cv"}
 )

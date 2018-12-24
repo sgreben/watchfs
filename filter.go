@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path/filepath"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -13,8 +12,6 @@ type Filter struct {
 	Extensions    []string `json:"exts,omitempty" yaml:"exts,flow,omitempty"`
 	OpsCSV        string   `json:"op,omitempty" yaml:"op,omitempty"`
 	Ops           []string `json:"ops,omitempty" yaml:"ops,flow,omitempty"`
-	Watch         []string `json:"watch,omitempty" yaml:"watch,flow,omitempty"`
-	Paths         []string `json:"paths,omitempty" yaml:"paths,flow,omitempty"`
 
 	extensions map[string]bool
 	ops        map[fsnotify.Op]bool
@@ -24,20 +21,12 @@ type Filter struct {
 func (f *Filter) Match(e Event) (all, any bool) {
 	ext := ext(e.Name)
 	ext = strings.ToLower(ext)
-	extensionsOk := f.extensions != nil && f.extensions[ext]
-	opsOk := f.ops != nil && f.ops[e.Op]
-	pathsOK := len(f.Paths) > 0
-	if len(f.Paths) > 0 {
-		for _, path := range f.Paths {
-			if ok, _ := filepath.Match(path, e.Name); !ok {
-				pathsOK = true
-				break
-			}
-		}
-	}
-	empty := f.extensions == nil && f.ops == nil && len(f.Paths) == 0
-	all = empty || (extensionsOk && opsOk && pathsOK)
-	any = extensionsOk || opsOk || pathsOK
+	extensionsOk := f.extensions[ext]
+	opsOk := f.ops[e.Op]
+	empty := f.extensions == nil && f.ops == nil
+	all = extensionsOk && opsOk
+	all = all || empty
+	any = extensionsOk || opsOk
 	return
 }
 
@@ -45,8 +34,6 @@ func (f *Filter) makeCanonical() {
 	if f == nil {
 		return
 	}
-	f.Paths = append(f.Paths, f.Watch...)
-	f.Watch = nil
 	if len(f.ExtensionsCSV) > 0 {
 		for _, v := range strings.Split(f.ExtensionsCSV, ",") {
 			f.Extensions = append(f.Extensions, v)

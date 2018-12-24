@@ -67,8 +67,8 @@ A (contrived) sample config that runs `go test .` using an `exec` action as well
 paths: [.]
 exts: [go]
 actions:
-- exec:
-    command: [go, test, .]
+- shell:
+    command: go test .
   exts: [go]
 - dockerRun:
     image: golang:1.11.4-alpine3.8
@@ -117,13 +117,13 @@ Description of something that can be executed; an object with [filter](#schema-f
 
 - `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
-- `signal`: [signal](#schema-signal)
 - `locks`: [lock name](#locks) string list
 
 ##### `exec` fields
 
 - `command`: string list
 - `env`: key/value map
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ##### `shell` fields
@@ -131,6 +131,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `command`: string
 - `shell`: string list
 - `env`: key/value map
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ##### `dockerRun` fields
@@ -142,6 +143,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `workdir`: string
 - `volumes`: [volume](#volume-fields) list
 - `extraArgs`: string list
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ###### `volume` fields
@@ -164,7 +166,6 @@ Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks
 
 A predicate over filesystem events; an object with the keys:
 
-- `paths`: (path or glob) list
 - `exts`: filename extension list
 - `ops`: [op](#schema-op) list
 

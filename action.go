@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -42,7 +41,6 @@ type Action struct {
 	Filter           `yaml:",inline,omitempty"`
 	Ignore           *Filter  `json:"ignore,omitempty" yaml:"ignore,omitempty"`
 	Delay            string   `json:"delay,omitempty" yaml:"delay,omitempty"`
-	Signal           string   `json:"signal,omitempty" yaml:"signal,omitempty"`
 	Locks            []string `json:"locks,omitempty" yaml:"locks,flow,omitempty"`
 
 	trigger chan Event
@@ -62,19 +60,13 @@ func (a *Action) makeCanonical() {
 	if a.delay > 0 {
 		a.tick = time.Tick(a.delay)
 	}
-	if a.Signal != "" {
-		s, ok := parseSignal[a.Signal]
-		if !ok {
-			s = syscall.SIGHUP
-		}
-		switch {
-		case a.ActionExec != nil:
-			a.ActionExec.signal = &s
-		case a.ActionShell != nil:
-			a.ActionShell.signal = &s
-		case a.ActionDockerRun != nil:
-			a.ActionDockerRun.signal = &s
-		}
+	switch {
+	case a.ActionExec != nil:
+		a.ActionExec.makeCanonical()
+	case a.ActionShell != nil:
+		a.ActionShell.makeCanonical()
+	case a.ActionDockerRun != nil:
+		a.ActionDockerRun.makeCanonical()
 	}
 }
 
@@ -92,7 +84,7 @@ func (a *Action) Match(e Event) bool {
 }
 
 // Notify notifies the action about a filesystem event
-func (a *Action) Notify(e Event) error {
+func (a *Action) Notify(e Event) (bool, error) {
 	switch {
 	case a.ActionHTTPGet != nil:
 		return a.ActionHTTPGet.Notify(e)
@@ -103,7 +95,7 @@ func (a *Action) Notify(e Event) error {
 	case a.ActionDockerRun != nil:
 		return a.ActionDockerRun.Notify(e)
 	}
-	return nil
+	return false, nil
 }
 
 // Run runs the action
@@ -129,8 +121,8 @@ type ActionHTTPGet struct {
 }
 
 // Notify notifies the action about a filesystem event
-func (a *ActionHTTPGet) Notify(e Event) error {
-	return nil
+func (a *ActionHTTPGet) Notify(e Event) (bool, error) {
+	return false, nil
 }
 
 // Run runs the action
@@ -157,28 +149,39 @@ func (a *ActionHTTPGet) Run(ctx context.Context) error {
 type ActionExec struct {
 	Command       []string          `json:"command,omitempty" yaml:"command,flow,omitempty"`
 	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	Signal        string            `json:"signal,omitempty" yaml:"signal,omitempty"`
 	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
+	command       *exec.Cmd
+	signal        *os.Signal
+}
 
-	signal  *os.Signal
-	command *exec.Cmd
+func (a *ActionExec) makeCanonical() {
+	if a.Signal != "" {
+		signal, ok := parseSignal[a.Signal]
+		if !ok {
+			signal = defaultSignal
+		}
+		a.signal = &signal
+	}
 }
 
 // Notify notifies the action about a filesystem event
-func (a *ActionExec) Notify(e Event) error {
-	if a.IgnoreSignals {
-		return nil
-	}
+func (a *ActionExec) Notify(e Event) (bool, error) {
 	if a.command == nil {
-		return nil
+		return false, nil
 	}
 	if a.command.Process == nil {
-		return nil
+		return false, nil
+	}
+	if a.IgnoreSignals {
+		return true, nil
 	}
 	s := config.signal
 	if a.signal != nil {
 		s = *a.signal
 	}
-	return a.command.Process.Signal(s)
+	err := a.command.Process.Signal(s)
+	return err == nil, err
 }
 
 // Run runs the action
@@ -212,27 +215,39 @@ type ActionShell struct {
 	Shell         []string          `json:"shell,omitempty" yaml:"shell,flow,omitempty"`
 	Env           map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	IgnoreSignals bool              `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
+	Signal        string            `json:"signal,omitempty" yaml:"signal,omitempty"`
 
-	signal  *os.Signal
 	command *exec.Cmd
+	signal  *os.Signal
+}
+
+func (a *ActionShell) makeCanonical() {
+	if a.Signal != "" {
+		signal, ok := parseSignal[a.Signal]
+		if !ok {
+			signal = defaultSignal
+		}
+		a.signal = &signal
+	}
 }
 
 // Notify notifies the action about a filesystem event
-func (a *ActionShell) Notify(e Event) error {
-	if a.IgnoreSignals {
-		return nil
-	}
+func (a *ActionShell) Notify(e Event) (bool, error) {
 	if a.command == nil {
-		return nil
+		return false, nil
 	}
 	if a.command.Process == nil {
-		return nil
+		return false, nil
+	}
+	if a.IgnoreSignals {
+		return true, nil
 	}
 	s := config.signal
 	if a.signal != nil {
 		s = *a.signal
 	}
-	return a.command.Process.Signal(s)
+	err := a.command.Process.Signal(s)
+	return err == nil, err
 }
 
 // Run runs the action
@@ -277,28 +292,40 @@ type ActionDockerRun struct {
 		Target string `json:"target,omitempty" yaml:"target,omitempty"`
 		Type   string `json:"type,omitempty" yaml:"type,omitempty"`
 	} `json:"volumes,omitempty" yaml:"volumes,omitempty"`
-	IgnoreSignals bool `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
+	IgnoreSignals bool   `json:"ignoreSignals,omitempty" yaml:"ignoreSignals,omitempty"`
+	Signal        string `json:"signal,omitempty" yaml:"signal,omitempty"`
 
 	signal  *os.Signal
 	command *exec.Cmd
 }
 
-// Notify notifies the action about a filesystem event
-func (a *ActionDockerRun) Notify(e Event) error {
-	if a.IgnoreSignals {
-		return nil
+func (a *ActionDockerRun) makeCanonical() {
+	if a.Signal != "" {
+		signal, ok := parseSignal[a.Signal]
+		if !ok {
+			signal = defaultSignal
+		}
+		a.signal = &signal
 	}
+}
+
+// Notify notifies the action about a filesystem event
+func (a *ActionDockerRun) Notify(e Event) (bool, error) {
 	if a.command == nil {
-		return nil
+		return false, nil
 	}
 	if a.command.Process == nil {
-		return nil
+		return false, nil
+	}
+	if a.IgnoreSignals {
+		return true, nil
 	}
 	s := config.signal
 	if a.signal != nil {
 		s = *a.signal
 	}
-	return a.command.Process.Signal(s)
+	err := a.command.Process.Signal(s)
+	return err == nil, err
 }
 
 // Run runs the action

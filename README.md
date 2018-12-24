@@ -37,14 +37,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/0.12.1/watchfs_0.12.1_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/0.12.1/watchfs_0.12.1_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/0.12.1/watchfs_0.12.1_windows_x86_64.zip
-unzip watchfs_0.12.1_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_windows_x86_64.zip
+unzip watchfs_0.12.2_windows_x86_64.zip
 ```
 
 ## Usage
@@ -114,8 +114,8 @@ A (contrived) sample config that runs `go test .` using an `exec` action as well
 paths: [.]
 exts: [go]
 actions:
-- exec:
-    command: [go, test, .]
+- shell:
+    command: go test .
   exts: [go]
 - dockerRun:
     image: golang:1.11.4-alpine3.8
@@ -164,13 +164,13 @@ Description of something that can be executed; an object with [filter](#schema-f
 
 - `delay`: duration string
 - `ignore`: [filter](#schema-filter) list
-- `signal`: [signal](#schema-signal)
 - `locks`: [lock name](#locks) string list
 
 ##### `exec` fields
 
 - `command`: string list
 - `env`: key/value map
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ##### `shell` fields
@@ -178,6 +178,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `command`: string
 - `shell`: string list
 - `env`: key/value map
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ##### `dockerRun` fields
@@ -189,6 +190,7 @@ Description of something that can be executed; an object with [filter](#schema-f
 - `workdir`: string
 - `volumes`: [volume](#volume-fields) list
 - `extraArgs`: string list
+- `signal`: [signal](#schema-signal)
 - `ignoreSignals`: boolean
 
 ###### `volume` fields
@@ -211,7 +213,6 @@ Lock names are arbitrary strings. Each lock name is mapped to a mutex. All locks
 
 A predicate over filesystem events; an object with the keys:
 
-- `paths`: (path or glob) list
 - `exts`: filename extension list
 - `ops`: [op](#schema-op) list
 
