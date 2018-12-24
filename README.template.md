@@ -22,6 +22,7 @@ Probably the best overview is given by
     - [Schema: Signal](#schema-signal)
     - [Schema: Op](#schema-op)
   - [`nodemon.json` config](#nodemonjson-config)
+  - [More examples](#more-examples)
 
 ## Get it
 
@@ -218,3 +219,34 @@ A filesystem operation; one of the strings:
 Most options from `nodemon`'s config file `nodemon.json` are supported. Exceptions will be documented here.
 
 To convert a nodemon.json to a canonical watchfs YAML config, you can use `watchfs -c path/to/nodemon.json -print-config`.
+
+### More examples
+
+- Go auto-reload
+
+  ```yaml
+  paths: [.]
+  ignore: [.git]
+  - ext: go
+    shell:
+      command: |
+          go get ./cmd/my-app;
+          exec my-app;
+  ```
+
+- Git auto-commit
+
+  ```yaml
+  paths: [.]
+  ignore: [.git]
+  actions:
+  - locks: [git]
+    shell:
+      ignoreSignals: true
+      shell: [sh, -c]
+      command: |
+        git add -A;
+        git commit -am "auto-commit";
+        git push;
+        true
+  ```
