@@ -28,7 +28,7 @@ type configuration struct {
 	Actions     []Action          `json:"actions,omitempty" yaml:"actions,omitempty"`
 	Delay       string            `json:"delay,omitempty" yaml:"delay,omitempty"`
 	Signal      string            `json:"signal,omitempty" yaml:"signal,omitempty"`
-	Shell       interface{}       `json:"shell,omitempty" yaml:"shell,omitempty"`
+	Self        *bool             `json:"self,omitempty" yaml:"self,omitempty"`
 
 	// Code-facing representation
 	signal os.Signal

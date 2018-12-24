@@ -37,14 +37,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/1.0.0/watchfs_1.0.0_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/1.0.0/watchfs_1.0.0_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/0.12.2/watchfs_0.12.2_windows_x86_64.zip
-unzip watchfs_0.12.2_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/1.0.0/watchfs_1.0.0_windows_x86_64.zip
+unzip watchfs_1.0.0_windows_x86_64.zip
 ```
 
 ## Usage
@@ -144,7 +144,7 @@ An object with the keys:
 - `ignores`: [filter](#schema-filter) list
 - `env`: key/value map
 - `delay`: duration string
-- `shell`: string list
+- `self`: boolean
 
 #### Schema: Action
 

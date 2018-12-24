@@ -97,7 +97,7 @@ An object with the keys:
 - `ignores`: [filter](#schema-filter) list
 - `env`: key/value map
 - `delay`: duration string
-- `shell`: string list
+- `self`: boolean
 
 #### Schema: Action
 

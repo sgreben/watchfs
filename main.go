@@ -41,6 +41,7 @@ var formats = []string{
 var config configuration
 var (
 	configPath          string
+	configPathAbs       string
 	extensions          stringsSetVar
 	extensionsCSV       string
 	watch               stringsSetVar
@@ -62,7 +63,8 @@ var (
 	printConfigAndExit  bool
 	printConfigFormat   = enumVar{Choices: formats, Value: formatYAML}
 	quiet               bool
-	ctx, ctxCancel      = context.WithCancel(context.Background())
+	ctx                 context.Context
+	ctxCancel           func()
 )
 
 func init() {
@@ -92,13 +94,9 @@ func init() {
 	flag.BoolVar(&quiet, "quiet", quiet, "do not print events to stdout")
 	flag.BoolVar(&quiet, "q", quiet, "(alias for -quiet)")
 	flag.Parse()
-	loadConfigFile()
-	flagsToConfiguration()
-	config.makeCanonical()
 }
 
 func main() {
-	defer ctxCancel()
 	if printConfigAndExit {
 		switch printConfigFormat.Value {
 		case formatJSON:
@@ -108,6 +106,17 @@ func main() {
 		}
 		return
 	}
+	for {
+		ctx, ctxCancel = context.WithCancel(context.Background())
+		watchContext(ctx)
+		ctxCancel()
+	}
+}
+
+func watchContext(ctx context.Context) {
+	loadConfigFile()
+	flagsToConfiguration()
+	config.makeCanonical()
 	noPaths := config.Paths == nil || len(config.Paths) == 0
 	noWatch := config.Watch == nil || len(config.Watch) == 0
 	if noPaths && noWatch {
@@ -159,11 +168,17 @@ func main() {
 			}
 		}()
 		go func() {
-			for e := range action.trigger {
-				if ok, _ := action.Notify(e); !ok {
-					run <- struct{}{}
+			defer close(run)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case e := <-action.trigger:
+					if ok, _ := action.Notify(e); !ok {
+						run <- struct{}{}
+					}
+					blockingWaitForTick()
 				}
-				blockingWaitForTick()
 			}
 		}()
 	}
@@ -190,7 +205,7 @@ func main() {
 		}
 	}()
 
-	<-make(chan struct{})
+	<-ctx.Done()
 }
 
 func flagsToConfiguration() {
@@ -243,13 +258,13 @@ func flagsToConfiguration() {
 	if flag.NArg() > 0 {
 		switch action.Value {
 		case actionShell:
-			var shellCommand []string
+			var command []string
 			for _, a := range flag.Args() {
-				shellCommand = append(shellCommand, fmt.Sprintf("%q", a))
+				command = append(command, fmt.Sprintf("%q", a))
 			}
 			config.Actions = append(config.Actions, Action{
 				ActionShell: &ActionShell{
-					Command: strings.Join(shellCommand, " "),
+					Command: strings.Join(command, " "),
 				},
 			})
 		case actionExec:
@@ -302,6 +317,7 @@ func loadConfigFile() {
 				onError(err)
 			}
 			config.makeCanonical()
+			configPathAbs, _ = filepath.Abs(name)
 			return true
 		}
 		return false
@@ -311,6 +327,7 @@ func loadConfigFile() {
 	}
 	for _, name := range defaultConfigBasenames {
 		if load(name) {
+			configPath = name
 			return
 		}
 	}
@@ -348,6 +365,13 @@ func shouldNotify(e Event) bool {
 }
 
 func onEvent(e Event) {
+	if config.Self == nil || *config.Self == true {
+		absPath, err := filepath.Abs(e.Name)
+		if err == nil && e.Op == fsnotify.Write && absPath == configPathAbs {
+			onInfo("reloading watchfs configuration")
+			ctxCancel()
+		}
+	}
 	if !shouldNotify(e) {
 		return
 	}
