@@ -174,10 +174,14 @@ func watchContext(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case e := <-action.trigger:
-					if ok, _ := action.Notify(e); !ok {
+					blockingWaitForTick()
+					action.Notify(e)
+					select {
+					case <-run:
+						run <- struct{}{}
+					default:
 						run <- struct{}{}
 					}
-					blockingWaitForTick()
 				}
 			}
 		}()
@@ -361,6 +365,11 @@ func shouldNotify(e Event) bool {
 			return false
 		}
 	}
+	for _, pattern := range config.IgnoreWatch {
+		if ok, err := filepath.Match(pattern, e.Name); err == nil && ok {
+			return false
+		}
+	}
 	return true
 }
 
@@ -393,8 +402,8 @@ func onEvent(e Event) {
 }
 
 func shouldExclude(path string, info os.FileInfo) bool {
-	for _, f := range config.IgnoreWatch {
-		if ok, err := filepath.Match(f, path); err == nil && ok {
+	for _, pattern := range config.IgnoreWatch {
+		if ok, err := filepath.Match(pattern, path); err == nil && ok {
 			return true
 		}
 	}
@@ -440,6 +449,7 @@ func watchRecursive(w *fsnotify.Watcher, path string) {
 		if info.IsDir() {
 			err := w.Add(path)
 			if err != nil {
+				onError(err)
 				return filepath.SkipDir
 			}
 		}
