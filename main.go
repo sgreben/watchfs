@@ -140,22 +140,21 @@ func watchContext(ctx context.Context) {
 	for i := range config.Actions {
 		action := &config.Actions[i]
 		action.trigger = make(chan Event, 1)
-		run := make(chan struct{}, 1)
-		run <- struct{}{}
-		blockingWaitForTick := func() {
+		action.run = make(chan struct{}, 1)
+		action.run <- struct{}{}
+		skipTriggersUntilTick := func() {
 			if action.tick != nil {
-			inner:
 				for {
 					select {
 					case <-action.tick:
-						break inner
+						break
 					case <-action.trigger:
 					}
 				}
 			}
 		}
 		go func() {
-			for range run {
+			for range action.run {
 				if err := action.Run(ctx); err != nil {
 					onError(struct {
 						Message string  `json:"message"`
@@ -168,18 +167,18 @@ func watchContext(ctx context.Context) {
 			}
 		}()
 		go func() {
-			defer close(run)
+			defer close(action.run)
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case e := <-action.trigger:
-					blockingWaitForTick()
+					skipTriggersUntilTick()
 					action.Notify(e)
 					select {
-					case <-run:
-						run <- struct{}{}
-					case run <- struct{}{}:
+					case <-action.run:
+						action.run <- struct{}{}
+					case action.run <- struct{}{}:
 					}
 				}
 			}

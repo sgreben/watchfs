@@ -38,14 +38,14 @@ go get -u github.com/sgreben/watchfs
 
 ```sh
 # Linux
-curl -L https://github.com/sgreben/watchfs/releases/download/1.0.2/watchfs_1.0.2_linux_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/1.0.3/watchfs_1.0.3_linux_x86_64.tar.gz | tar xz
 
 # OS X
-curl -L https://github.com/sgreben/watchfs/releases/download/1.0.2/watchfs_1.0.2_osx_x86_64.tar.gz | tar xz
+curl -L https://github.com/sgreben/watchfs/releases/download/1.0.3/watchfs_1.0.3_osx_x86_64.tar.gz | tar xz
 
 # Windows
-curl -LO https://github.com/sgreben/watchfs/releases/download/1.0.2/watchfs_1.0.2_windows_x86_64.zip
-unzip watchfs_1.0.2_windows_x86_64.zip
+curl -LO https://github.com/sgreben/watchfs/releases/download/1.0.3/watchfs_1.0.3_windows_x86_64.zip
+unzip watchfs_1.0.3_windows_x86_64.zip
 ```
 
 ## Usage

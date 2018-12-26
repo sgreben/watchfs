@@ -44,6 +44,7 @@ type Action struct {
 	Locks            []string `json:"locks,omitempty" yaml:"locks,flow,omitempty"`
 
 	trigger chan Event
+	run     chan struct{}
 	delay   time.Duration
 	tick    <-chan time.Time
 }
