@@ -179,8 +179,7 @@ func watchContext(ctx context.Context) {
 					select {
 					case <-run:
 						run <- struct{}{}
-					default:
-						run <- struct{}{}
+					case run <- struct{}{}:
 					}
 				}
 			}
